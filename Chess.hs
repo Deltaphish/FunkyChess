@@ -38,7 +38,7 @@ instance Show Piece
     show (Piece Queen Black) = "♛"
     show (Piece King Black) = "♚"
 
-
+{-
 instance Show Board
  where
     show (Board matrix) = (unlines $ map (\(a,b) -> a ++ "|" ++ b) $ zip (intersperse " " (map show (reverse [1..8]))) $intersperse (concat (replicate 8 "_ ")) $ map showRow matrix) ++ "  A B C D E F G H"
@@ -46,11 +46,26 @@ instance Show Board
         showRow [] = ""
         showRow ((Just p):row') = show p ++ "|" ++ showRow row'
         showRow ((Nothing):row') = " |" ++ showRow row'
+-}
+instance Show Board where
+   show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H"
+      where 
+         createGrid = unlines.addNumberCol.addFloor
+
+         addFloor :: [String] -> [String]
+         addFloor = intersperse (init (concat (replicate 8 "— ")) ++ "|")
+
+         addNumberCol :: [String] -> [String]
+         addNumberCol = map (\(a,b) -> a ++ "|" ++ b).(zip (intersperse " " $ map show $ reverse [1..8]))
+
+         showRow [] = ""
+         showRow ((Just p):row') = show p ++ "|" ++ showRow row'
+         showRow ((Nothing):row') = " |" ++ showRow row'
 
 -- Get from Board
 (#!>) :: Board -> Pos -> Square
 (Board b) #!> (r,c) = b !! r !! c
-
+-- Place on Board
 (#=>) :: Board -> (Pos,Square) -> Board
 (Board b) #=> ((r,c),sqr) = Board $ startRow ++ (startCol ++ sqr : endCol) : (tail endRow)
     where
