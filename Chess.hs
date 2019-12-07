@@ -38,15 +38,6 @@ instance Show Piece
     show (Piece Queen Black) = "♛"
     show (Piece King Black) = "♚"
 
-{-
-instance Show Board
- where
-    show (Board matrix) = (unlines $ map (\(a,b) -> a ++ "|" ++ b) $ zip (intersperse " " (map show (reverse [1..8]))) $intersperse (concat (replicate 8 "_ ")) $ map showRow matrix) ++ "  A B C D E F G H"
-       where
-        showRow [] = ""
-        showRow ((Just p):row') = show p ++ "|" ++ showRow row'
-        showRow ((Nothing):row') = " |" ++ showRow row'
--}
 instance Show Board where
    show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H"
       where 
@@ -95,8 +86,8 @@ pawnRow color' = map Just $ replicate 8 (Piece Pawn color')
 -- Returns a list of possible direction for the piece
 
 moves :: Piece -> [Direction]
-moves (Piece Pawn White) = (-1,0) : (-1,1) : (-1,-1) : []
-moves (Piece Pawn Black) = (1,0) : (1,1) : (1,-1) : []
+moves (Piece Pawn White) = (-1,0) : []
+moves (Piece Pawn Black) = (1,0) : []
 moves (Piece Tower _ )   = (1,0) : (-1,0) : (0,1) : (0,-1) : []
 moves (Piece Knight _ )  = (-2,1) : (-2,-1) : (-1,2) : (-1,-2) : 
                            (2,1) : (2,-1) : (1,2) : (1,-2) : []
@@ -112,20 +103,27 @@ onBoard (r,c) = r >= 0 && r <= 7 && c >= 0 && c <= 7
 -- Generates a list of possible destinations for the piece at startPos
 possibleDest :: Board -> Pos -> [Pos]
 possibleDest board startPos
-   | (rank p) `elem` [Pawn,Knight,King] = concat [ walk startPos move False | move <- moves p]
+   | (rank p) == Pawn                   = pawnWalk
+   | (rank p) `elem` [Knight,King]      = concat [ walk startPos move False | move <- moves p]
    | otherwise                          = concat [ walk startPos move True  | move <- moves p]
    where
       p = fromJust $ board #!> startPos
-      {-
-      collision :: Board -> (Pos,Pos) -> Bool
-      collision board (_,dest) = case destSqr of
-                                    Just p2 -> color p /= color p2
-                                    Nothing -> False
-         where
-            destSqr = board #!> dest
 
-      step :: [Direction] -> [Pos]
-      step = (filter (collision board)).(filter onBoard).map (\(a,b) -> (a+(fst startPos),b+(snd startPos))) -}
+      -- Special case for pawn since pawn can only go diagonal if it can take a piece
+      pawnWalk = concat [pawnWalk' i | i <- [-1..1]]
+         where
+            (r,c)  = startPos
+            (dr,_) = head $ moves p
+            pawnWalk' :: Int -> [Pos]
+            pawnWalk' 0
+               | onBoard (r+dr,c) = (r+dr,c) : []
+               | otherwise        = []
+            pawnWalk' n
+               | onBoard (r+dr,c+n) = case board #!> (r+dr,c+n) of
+                                          Just piece -> if color piece /= color p then (r+dr,c+n) : [] else []
+                                          Nothing -> []
+               | otherwise = []
+         
 
       walk :: Pos -> Direction -> Bool -> [Pos]
       walk (r,c) (dr,dc) b
@@ -147,8 +145,8 @@ initBoard = Board $ homeRow Black        :
             []
 
 
-movePiece :: Board -> Pos -> Pos -> Maybe Board
-movePiece board start dest
+movePiece :: Board -> Move -> Maybe Board
+movePiece board (start,dest)
    | dest `elem` possibleDest board start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
    | otherwise                            = Nothing
 
@@ -157,55 +155,70 @@ checkMate :: Board -> Maybe Color
 checkMate = undefined
 -- AI
 
-pieceValue :: Piece -> Int
-pieceValue (Piece r c) = rankValue r * colorWeight c
-   where 
-      colorWeight :: Color -> Int
-      colorWeight White = -1
-      colorWeight Black = 1
 
-      rankValue :: Rank -> Int
-      rankValue Pawn  = 3
-      rankValue Queen = 50
-      rankValue King  = 900
-      rankValue _     = 25
+rankValue :: Rank -> Int
+rankValue Pawn  = 3
+rankValue Queen = 50
+rankValue King  = 900
+rankValue _     = 25
 
 valueBoard :: Board -> Int
-valueBoard (Board b) = valueRow b 0
-   where 
-      valueRow :: [[Square]] -> Int -> Int
-      valueRow [] _ = 0
-      valueRow (r:rs) n = let rowVal = foldr (+) 0 $ map (\p -> pieceValue p) $ catMaybes r in rowVal + valueRow rs (n+1)
+valueBoard board = sum $ map (getPieceValue' board) $ getPiecePositions board Black ++ getPiecePositions board White
 
-getPiecePositions :: Board -> [(Pos,Piece)]
-getPiecePositions (Board b) = getPieceInRows b 0
+getPieceValue' :: Board -> Pos -> Int
+getPieceValue' board (row,col)  
+   | c == White = (-1) * rankValue r
+   | r /= Pawn  = rankValue r 
+   | otherwise  = rankValue r
+      where Just (Piece r c) = board #!> (row,col)
+
+getPiecePositions :: Board -> Color -> [Pos]
+getPiecePositions (Board b) color' = getPieceInRows b 0
    where
-      getPieceInRows :: [[Square]] -> Int -> [(Pos,Piece)]
+      getPieceInRows :: [[Square]] -> Int -> [Pos]
       getPieceInRows [] _     = []
-      getPieceInRows (r:rw) n = [((n,c),fromJust (r !! c) )| c <- findIndices isJust r] ++
+      getPieceInRows (r:rw) n = [(n,c) | c <- findIndices isJust r, (color $ fromJust ((Board b) #!> (n,c))) == color'] ++
                                 getPieceInRows rw (n+1)
 
-minMax :: Board -> Color -> (Pos,Pos)
-minMax board aiColor = getBestMove
+--
+type Move = (Pos,Pos)
+
+data MoveTree = Node Move [MoveTree] deriving Show
+
+getRoot :: MoveTree -> Move
+getRoot (Node m _) = m
+
+genMoves :: Board -> Pos -> [Move]
+genMoves board p = zip (repeat p) (possibleDest board p)
+
+-- BruteForce best move from depth n
+bruteForce :: Board -> Int -> Move
+bruteForce board n = getTop $ sortBy (\(s1,_) (s2,_) -> compare s2 s1) $ map (\t -> (scoreTree board t,t)) forrest 
+   where forrest = plantTree board n
+         getTop = getRoot.snd.head 
+
+scoreTree :: Board -> MoveTree -> Int
+scoreTree board (Node m []) = let Just board' = movePiece board m in 
+                                 valueBoard board'
+scoreTree board (Node m ms) = let Just board' = movePiece board m in
+                                 maximum $ map (scoreTree board') ms
+
+
+-- Create new level of tree from a Move
+evalNodes :: Board -> Move -> Int -> [MoveTree]
+evalNodes board move n = plantTree newBoard (n-1)
    where
-      aiPieces :: Board -> [(Pos,Piece)]
-      aiPieces board = filter (\(_,p) -> color p == aiColor) $ getPiecePositions board
-      
-      possibleAiMoves :: [(Pos,Piece)] -> [(Pos,Pos)]
-      possibleAiMoves = concat . map (\(cord,_) -> zip (repeat cord) (possibleDest board cord))
+      newBoard = fromJust $ movePiece board move
 
-      possibleFutureBoards :: [(Pos,Pos)] -> [((Pos,Pos),Board)]
-      possibleFutureBoards = map (\(s,d) -> ((s,d),fromJust $ movePiece board s d))
+-- Create a List of Nodes from all availibe moves
+-- N specifies depth
+plantTree :: Board -> Int -> [MoveTree]
+plantTree _ 0 = []
+plantTree board n = [Node move (evalNodes board move n) | p <- pos, move <- (genMoves board p)]
+  where pos = if n `mod` 2 == 0 then getPiecePositions board Black else getPiecePositions board White 
+--Get all ai piece positions
 
-      scoreBoards :: [((Pos,Pos),Board)] -> [(Int,(Pos,Pos),Board)]
-      scoreBoards = map (\(m,b) -> (valueBoard b,m,b))
 
-      outcomes = scoreBoards.possibleFutureBoards.possibleAiMoves.aiPieces
-
-      getBestMove = move where (_,move,_) = head $ sortBy (\(s1,_,_) (s2,_,_) -> compare s1 s2) $ outcomes board
-
-aiMove :: Board -> Board
-aiMove board = let (start,dest) = minMax board Black in fromJust $ movePiece board start dest
 {-
     -- various test functions, delete later
     vizDest :: Board -> Pos -> Board
