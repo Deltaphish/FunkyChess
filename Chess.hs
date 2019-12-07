@@ -200,8 +200,8 @@ getRoot (Node m _) = m
 genMoves :: Board -> Pos -> [Move]
 genMoves board p = zip (repeat p) (possibleDest board p)
 
-bruteForce' :: Board -> Int -> [(Move,Int)]
-bruteForce' board n = calcScore listOfMoves `using` parList rdeepseq
+bruteForce' :: Board -> Int -> Move
+bruteForce' board n = fst $ head $ sortBy (\(_,s1) (_,s2) -> compare s2 s1) (calcScore listOfMoves `using` parList rdeepseq)
    where
       calcScore   = map (\l -> ((head.head) l,score l))
       listOfMoves = map toLists $ plantTree board n
@@ -239,7 +239,11 @@ plantTree board n = [Node move (evalNodes board move n) | p <- pos, move <- (gen
 
 --Test Main
 main = do
-   putStrLn $ show $ bruteForce' initBoard 4
+   let board1 = iterate (\b -> fromJust $ movePiece b $ bruteForce' b 4) initBoard
+   putStrLn $ show $ take 10 board1
+   
+
+   --ToDo assume i will play a smart move
 
 {-
     -- various test functions, delete later
