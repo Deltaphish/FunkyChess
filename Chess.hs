@@ -1,5 +1,6 @@
 import Data.List
 import Data.Maybe
+import Control.Parallel.Strategies
 
 type Pos = (Int,Int)
 type Direction = (Int,Int)
@@ -148,7 +149,7 @@ initBoard = Board $ homeRow Black        :
 movePiece :: Board -> Move -> Maybe Board
 movePiece board (start,dest)
    | dest `elem` possibleDest board start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
-   | otherwise                            = Nothing
+   | otherwise                            = error "Invalid Move"
 
 -- Returns the color of the player who has been checkmated
 checkMate :: Board -> Maybe Color
@@ -185,16 +186,34 @@ type Move = (Pos,Pos)
 
 data MoveTree = Node Move [MoveTree] deriving Show
 
+toLists :: MoveTree -> [[Move]]
+toLists (Node move []) = [[move]]
+toLists (Node m ms) = map (m:) $ concat $ map toLists ms
+
+scoreList :: Board -> [Move] -> Int
+scoreList board moves' = valueBoard resBoard
+   where resBoard = foldl (\b m -> fromJust $ movePiece b m) board moves'
+
 getRoot :: MoveTree -> Move
 getRoot (Node m _) = m
 
 genMoves :: Board -> Pos -> [Move]
 genMoves board p = zip (repeat p) (possibleDest board p)
 
+bruteForce' :: Board -> Int -> [(Move,Int)]
+bruteForce' board n = calcScore listOfMoves `using` parList rdeepseq
+   where
+      calcScore   = map (\l -> ((head.head) l,score l))
+      listOfMoves = map toLists $ plantTree board n
+      score :: [[Move]] -> Int
+      score = maximum.(map (scoreList board))
+
 -- BruteForce best move from depth n
 bruteForce :: Board -> Int -> Move
-bruteForce board n = getTop $ sortBy (\(s1,_) (s2,_) -> compare s2 s1) $ map (\t -> (scoreTree board t,t)) forrest 
-   where forrest = plantTree board n
+bruteForce board n = getTop sortedForest
+   where sortedForest = sortBy (\(s1,_) (s2,_) -> compare s2 s1) scores
+         scores = map (\t -> (scoreTree board t,t)) forest
+         forest = plantTree board n
          getTop = getRoot.snd.head 
 
 scoreTree :: Board -> MoveTree -> Int
@@ -218,6 +237,9 @@ plantTree board n = [Node move (evalNodes board move n) | p <- pos, move <- (gen
   where pos = if n `mod` 2 == 0 then getPiecePositions board Black else getPiecePositions board White 
 --Get all ai piece positions
 
+--Test Main
+main = do
+   putStrLn $ show $ bruteForce' initBoard 4
 
 {-
     -- various test functions, delete later
