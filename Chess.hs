@@ -40,7 +40,7 @@ instance Show Piece
     show (Piece King Black) = "♚"
 
 instance Show Board where
-   show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H"
+   show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H\n"
       where 
          createGrid = unlines.addNumberCol.addFloor
 
@@ -100,6 +100,26 @@ moves (Piece King _)     = [(dr',dc') | dr' <- [-1..1], dc' <- [-1..1], (dr',dc'
 onBoard :: Pos -> Bool
 onBoard (r,c) = r >= 0 && r <= 7 && c >= 0 && c <= 7
 
+-- Special version when we want to check if a piece is covering a friendly piece
+possibleDest' :: Board -> Pos -> [Pos]
+possibleDest' board startPos
+   | (rank p) == Pawn                   = [(r+dr,c+dc) | dc <- [-1..1]]
+   | (rank p) `elem` [Knight,King]      = concat [ walk startPos move False | move <- moves p]
+   | otherwise                          = concat [ walk startPos move True  | move <- moves p]
+   where
+      p = case board #!> startPos of
+         Just p' -> p'
+         Nothing -> error ("possibleDest': no piece at position " ++ show startPos)
+      (r,c) = startPos
+      (dr,_) = head $ moves p
+
+      walk :: Pos -> Direction -> Bool -> [Pos]
+      walk (r,c) (dr,dc) b
+         | not $ onBoard newPos = []
+         | otherwise = case board #!> newPos of
+                          Nothing -> if b then newPos : walk newPos (dr,dc) b else [newPos]
+                          Just p' -> [newPos]
+            where newPos = (r+dr,c+dc)
 
 -- Generates a list of possible destinations for the piece at startPos
 possibleDest :: Board -> Pos -> [Pos]
@@ -108,7 +128,9 @@ possibleDest board startPos
    | (rank p) `elem` [Knight,King]      = concat [ walk startPos move False | move <- moves p]
    | otherwise                          = concat [ walk startPos move True  | move <- moves p]
    where
-      p = fromJust $ board #!> startPos
+      p = case board #!> startPos of
+             Just p' -> p'
+             Nothing -> error ("possibleDest: no piece at position " ++ show startPos)
 
       -- Special case for pawn since pawn can only go diagonal if it can take a piece
       pawnWalk = concat [pawnWalk' i | i <- [-1..1]]
@@ -164,7 +186,15 @@ rankValue King  = 900
 rankValue _     = 25
 
 valueBoard :: Board -> Int
-valueBoard board = sum $ map (getPieceValue' board) $ getPiecePositions board Black ++ getPiecePositions board White
+valueBoard board = pieceValueSum + coverageSum
+   where 
+      pieceValueSum = sum $ map (getPieceValue' board) $ getPiecePositions board Black ++ getPiecePositions board White
+      coverageSum   = getCoverValue board
+
+-- Make the ai value moves that cover its own pieces
+getCoverValue :: Board -> Int
+getCoverValue board = length $ intersect destinations (getPiecePositions board Black)
+   where destinations = concat $ map (possibleDest' board) (getPiecePositions board Black)
 
 getPieceValue' :: Board -> Pos -> Int
 getPieceValue' board (row,col)  
@@ -201,46 +231,68 @@ genMoves :: Board -> Pos -> [Move]
 genMoves board p = zip (repeat p) (possibleDest board p)
 
 bruteForce' :: Board -> Int -> Move
-bruteForce' board n = fst $ head $ sortBy (\(_,s1) (_,s2) -> compare s2 s1) (calcScore listOfMoves `using` parList rdeepseq)
+bruteForce' board n = fst $ head $ sortBy (\(_,s1) (_,s2) -> compare s2 s1) parCalc
    where
+      parCalc     = (calcScore listOfMoves `using` parList rdeepseq)
       calcScore   = map (\l -> ((head.head) l,score l))
-      listOfMoves = map toLists $ plantTree board n
+      listOfMoves = map toLists $ createAITree board n
       score :: [[Move]] -> Int
       score = maximum.(map (scoreList board))
 
 -- BruteForce best move from depth n
-bruteForce :: Board -> Int -> Move
-bruteForce board n = getTop sortedForest
-   where sortedForest = sortBy (\(s1,_) (s2,_) -> compare s2 s1) scores
+{-
+bruteForce :: Board -> Int -> Color -> Move
+bruteForce board n color' = getTop sortedForest
+   where sortedForest 
+            | color' == White = sortBy (\(s1,_) (s2,_) -> compare s2 s1) scores
+            | otherwise       = sortBy (\(s1,_) (s2,_) -> compare s1 s2) scores
          scores = map (\t -> (scoreTree board t,t)) forest
-         forest = plantTree board n
+         forest = createAITree board n
          getTop = getRoot.snd.head 
 
+-}
 scoreTree :: Board -> MoveTree -> Int
 scoreTree board (Node m []) = let Just board' = movePiece board m in 
                                  valueBoard board'
 scoreTree board (Node m ms) = let Just board' = movePiece board m in
                                  maximum $ map (scoreTree board') ms
 
+scoreMoves :: Board -> [Move] -> [(Int,Move)]
+scoreMoves _ []         = []
+scoreMoves board (m:ms) = case movePiece board m of
+                             Just board' -> (valueBoard board',m) : (scoreMoves board ms)
+                             Nothing     -> error ("scoreMoves: illeagal move " ++ show m)
+
+
+-- Ai Moves -> Player Moves -> Ai Moves 
 
 -- Create new level of tree from a Move
 evalNodes :: Board -> Move -> Int -> [MoveTree]
-evalNodes board move n = plantTree newBoard (n-1)
+evalNodes board move n = createAITree newBoard (n-1)
    where
-      newBoard = fromJust $ movePiece board move
+      newBoard = case movePiece board move of
+                    Just board' -> board'
+                    Nothing     -> error ("newBoard: illeagal move " ++ show move)
 
 -- Create a List of Nodes from all availibe moves
 -- N specifies depth
-plantTree :: Board -> Int -> [MoveTree]
-plantTree _ 0 = []
-plantTree board n = [Node move (evalNodes board move n) | p <- pos, move <- (genMoves board p)]
-  where pos = if n `mod` 2 == 0 then getPiecePositions board Black else getPiecePositions board White 
+createAITree :: Board -> Int -> [MoveTree]
+createAITree _ 0 = []
+createAITree board n | n `mod` 2 == 0 = [Node move (evalNodes board move n) | p <- pos Black, move <- (genMoves board p)]
+                     | otherwise      = [Node bestPlayerMove (evalNodes board bestPlayerMove n)]
+                     where pos = getPiecePositions board
+                           playerMoves = concat $ filter (not . null) $ map (genMoves board) (pos White)
+                           bestPlayerMove = snd $ head $ sortBy (\(s1,_) (s2,_) -> compare s1 s2) $ scoreMoves board playerMoves
 --Get all ai piece positions
+
+makeAiMove board = case movePiece board (bruteForce' board 6) of
+   Just board' -> board'
+   Nothing     -> error "makeAiMove: invalid move"
 
 --Test Main
 main = do
-   let board1 = iterate (\b -> fromJust $ movePiece b $ bruteForce' b 4) initBoard
-   putStrLn $ show $ take 10 board1
+   let board1 = iterate makeAiMove initBoard
+   putStrLn $ (show $ take 10 board1)
    
 
    --ToDo assume i will play a smart move
