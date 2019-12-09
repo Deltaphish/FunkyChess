@@ -26,6 +26,8 @@ newtype Board = Board [[Square]]
 
 -- Recursive Tree Datatype for collecting the moves generated for the ai
 data MoveTree = Node Move [MoveTree] deriving Show
+getRoot :: MoveTree -> Move
+getRoot (Node m _) = m
 
 instance Show Piece
    where
@@ -52,10 +54,10 @@ instance Show Board where
          addFloor = intersperse (init (concat (replicate 8 "— ")) ++ "|")
 
          addNumberCol :: [String] -> [String]
-         addNumberCol = map (\(a,b) -> a ++ "|" ++ b).(zip (intersperse " " $ map show $ reverse [1..8]))
+         addNumberCol = map (\(a,b) -> a ++ "|" ++ b) . zip (intersperse " " $ map show $ reverse [1..8])
 
          showRow [] = ""
-         showRow ((Just p):row') = show p ++ "|" ++ showRow row'
+         showRow (Just p:row') = show p ++ "|" ++ showRow row'
          showRow (Nothing:row') = " |" ++ showRow row'
 
 -- Helper functions for operating on a board
@@ -65,7 +67,7 @@ instance Show Board where
 
 -- Place a square on a position on a Board
 (#=>) :: Board -> (Pos,Square) -> Board
-(Board b) #=> ((r,c),sqr) = Board $ startRow ++ (startCol ++ sqr : endCol) : (tail endRow)
+(Board b) #=> ((r,c),sqr) = Board $ startRow ++ (startCol ++ sqr : endCol) : tail endRow
     where
         (startRow,endRow) = splitAt r b
         (startCol,_:endCol) = splitAt c (head endRow)
@@ -78,27 +80,23 @@ emptyRow = replicate 8 Nothing
 
 homeRow :: Color -> [Square]
 homeRow color' = map Just homeRow'
-    where 
-       homeRow' = (Piece Tower color')  :
-                  (Piece Knight color') :
-                  (Piece Bishop color') :
-                  (Piece Queen color')  :
-                  (Piece King color')   :
-                  (Piece Bishop color') :
-                  (Piece Knight color') :
-                  (Piece Tower color')  :
-                  []
+    where homeRow' = [Piece Tower color',
+                      Piece Knight color',
+                      Piece Bishop color',
+                      Piece Queen color',
+                      Piece King color',
+                      Piece Bishop color',
+                      Piece Knight color',
+                      Piece Tower color']
 
 pawnRow :: Color -> [Square]
-pawnRow color' = map Just $ replicate 8 (Piece Pawn color')
+pawnRow color' = replicate 8 $ Just (Piece Pawn color')
 
 initBoard :: Board
-initBoard = Board $ homeRow Black        :
-            pawnRow Black                :
-            replicate 4 emptyRow         ++
-            pawnRow White                :
-            homeRow White                :
-            []
+initBoard = Board $ 
+               [homeRow Black,pawnRow Black] ++
+               replicate 4 emptyRow          ++
+               [pawnRow White,homeRow White]
 
 -- Returns a list of possible direction for the piece
 -- This does not account for moves with requirements (Pawn)
@@ -122,16 +120,16 @@ getPiecePositions (Board b) color' = getPieceInRows b 0
    where
       getPieceInRows :: [[Square]] -> Int -> [Pos]
       getPieceInRows [] _     = []
-      getPieceInRows (r:rw) n = [(n,c) | c <- findIndices isJust r, (color $ fromJust ((Board b) #!> (n,c))) == color'] ++
+      getPieceInRows (r:rw) n = [(n,c) | c <- findIndices isJust r, color (fromJust (Board b #!> (n,c))) == color'] ++
                                 getPieceInRows rw (n+1)
 
 -- Generates a list of possible destinations for the piece at startPos
 -- set checkCoverage to true for checking if a piece is covering another friendly piece
 possibleDest :: Board -> Bool -> Pos -> [Pos]
 possibleDest board checkCoverage startPos
-   | (rank p) == Pawn                   = pawnWalk
-   | (rank p) `elem` [Knight,King]      = concat [ walk startPos move False | move <- moves p]
-   | otherwise                          = concat [ walk startPos move True  | move <- moves p]
+   | rank p == Pawn                   = pawnWalk
+   | rank p `elem` [Knight,King]      = concat [ walk startPos move False | move <- moves p]
+   | otherwise                        = concat [ walk startPos move True  | move <- moves p]
    where
       p = fromMaybe (error ("possibleDest: no piece at position " ++ show startPos))
              (board #!> startPos)
@@ -198,6 +196,17 @@ rankValue Tower  = 5
 rankValue Queen  = 8
 rankValue King   = 999 
 
+-- Make the ai value moves that cover its own pieces
+getCoverValue :: Board -> Int
+getCoverValue board = length $ intersect destinations (getPiecePositions board aiColor)
+   where destinations = concatMap (possibleDest board True) (getPiecePositions board aiColor)
+
+getPieceValue' :: Board -> Pos -> Int
+getPieceValue' board (row,col)  
+   | c == playerColor = 10 * (negate $ rankValue r)
+   | otherwise        =          rankValue r
+      where Just (Piece r c) = board #!> (row,col)
+
 valueBoard :: Board -> Int
 valueBoard board = pieceValueSum + coverageSum
    where 
@@ -206,79 +215,60 @@ valueBoard board = pieceValueSum + coverageSum
                         getPiecePositions board playerColor
       coverageSum   = getCoverValue board
 
--- Make the ai value moves that cover its own pieces
-getCoverValue :: Board -> Int
-getCoverValue board = length $ intersect destinations (getPiecePositions board aiColor)
-   where destinations = concatMap (possibleDest board True) (getPiecePositions board aiColor)
-
--- Sets 
-getPieceValue' :: Board -> Pos -> Int
-getPieceValue' board (row,col)  
-   | c == playerColor = negate $ rankValue r
-   | otherwise        =          rankValue r
-      where Just (Piece r c) = board #!> (row,col)
-
---
+-- Converts MoveTree To lists of move-chains for easier parallelization 
 
 toLists :: MoveTree -> [[Move]]
 toLists (Node move []) = [[move]]
-toLists (Node m ms) = map (m:) $ concat $ map toLists ms
+toLists (Node m ms) = map (m:) $ concatMap toLists ms
+
+-- Scores a move-chain
 
 scoreList :: Board -> [Move] -> Int
 scoreList board moves' = valueBoard resBoard
    where resBoard = foldl (\b m -> fromJust $ movePiece b m) board moves'
 
-getRoot :: MoveTree -> Move
-getRoot (Node m _) = m
-
+-- Generates all possible moves for a piece att a given position
 genMoves :: Board -> Pos -> [Move]
 genMoves board p = zip (repeat p) (possibleDest board False p)
 
 bruteForce' :: Board -> Int -> Move
 bruteForce' board n = fst $ maximumBy (\(_,s1) (_,s2) -> compare s1 s2) parCalc
    where
-      parCalc     = (calcScore listOfMoves `using` parList rdeepseq)
+      parCalc     = calcScore listOfMoves `using` parList rdeepseq
       calcScore   = map (\l -> ((head.head) l,score l))
       listOfMoves = map toLists $ createMoveTree board n
       score :: [[Move]] -> Int
-      score = maximum.(map (scoreList board))
-
-scoreTree :: Board -> MoveTree -> Int
-scoreTree board (Node m []) = let Just board' = movePiece board m in 
-                                 valueBoard board'
-scoreTree board (Node m ms) = let Just board' = movePiece board m in
-                                 maximum $ map (scoreTree board') ms
+      score = maximum . map (scoreList board)
 
 scoreMoves :: Board -> [Move] -> [(Int,Move)]
 scoreMoves _ []         = []
 scoreMoves board (m:ms) = case movePiece board m of
-                             Just board' -> (valueBoard board',m) : (scoreMoves board ms)
+                             Just board' -> (valueBoard board',m) : scoreMoves board ms
                              Nothing     -> error ("scoreMoves: illeagal move " ++ show m)
 
 
 {-
-   Evaluate the ai's next move by creating a trees of all possible move chains from the board.
+   Evaluate the ai's next move by creating a trees of all possible move-chains from the board.
    Then pick the tree with the greatest score in the lowest node. To make use of parallellization,
-   we convert all tree to lists. 
+   we convert all trees to lists of move-chains.
 -}
 
 -- Create new level of tree from a Move
 evalMoveTree :: Board -> Move -> Int -> [MoveTree]
 evalMoveTree board move n = createMoveTree newBoard (n-1)
    where
-      newBoard = case movePiece board move of
-                    Just board' -> board'
-                    Nothing     -> error ("newBoard: illeagal move " ++ show move)
+      newBoard = fromMaybe (error ("newBoard: illeagal move " ++ show move)) 
+                    (movePiece board move)
 
 -- Create a List of Nodes from all availibe moves
 -- N specifies depth
 createMoveTree :: Board -> Int -> [MoveTree]
 createMoveTree _ 0 = []
-createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n) | p <- pos aiColor, move <- (genMoves board p)]
-                     | otherwise      = [Node bestPlayerMove (evalMoveTree board bestPlayerMove n)]
-                     where pos = getPiecePositions board
-                           playerMoves = concat $ filter (not . null) $ map (genMoves board) (pos playerColor)
-                           bestPlayerMove = snd $ minimumBy (\(s1,_) (s2,_) -> compare s1 s2) $ scoreMoves board playerMoves
+createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n) | p <- pos aiColor, move <- genMoves board p]
+                       | otherwise      = [Node bestPlayerMove (evalMoveTree board bestPlayerMove n)]
+                       where pos = getPiecePositions board
+                             playerMoves = concat $ filter (not . null) $ map (genMoves board) (pos playerColor)
+                             bestPlayerMove = snd $ minimumBy (\(s1,_) (s2,_) -> compare s1 s2) $ scoreMoves board playerMoves
 --Get all ai piece positions
 
 makeAiMove board = fromMaybe (error "makeAiMove: invalid move") 
@@ -287,7 +277,7 @@ makeAiMove board = fromMaybe (error "makeAiMove: invalid move")
 --Test Main
 main = do
    let board1 = iterate makeAiMove initBoard
-   putStrLn $ (show $ take 10 board1)
+   print (take 20 board1)
    
 
    --ToDo assume i will play a smart move
