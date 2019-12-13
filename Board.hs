@@ -1,11 +1,5 @@
-module Board ( Color (White,Black)
-             , Rank (Pawn, Tower, Knight, Bishop, Queen, King)
-             , Piece (Piece)
-             , Board
-             , (#!>)
+module Board ( (#!>)
              , (#=>)
-             , Pos
-             , Move
              , initBoard
              , possibleMoves
              , possibleDest
@@ -15,62 +9,13 @@ module Board ( Color (White,Black)
 
 import Data.List
 import Data.Maybe
+import Types
 
-type Pos = (Int,Int)
-type Direction = (Int,Int)
-type Move = (Pos,Pos)
-
-data Color = White | Black deriving Eq
-
-data Rank =
-    Pawn   |
-    Tower  |
-    Knight |
-    Bishop |
-    Queen  |
-    King deriving Eq
-
-data Piece = Piece{ rank :: Rank
-                  , color :: Color
-                  }
-
-type Square = Maybe Piece
-
-newtype Board = Board [[Square]]
 
 onBoard :: Pos -> Bool
 onBoard (r,c) = r >= 0 && r <= 7 && c >= 0 && c <= 7
 
-instance Show Piece
-   where
-    show (Piece Pawn White) = "♙"
-    show (Piece Knight White) = "♘"
-    show (Piece Bishop White) = "♗"
-    show (Piece Tower White) = "♖"
-    show (Piece Queen White) = "♕"
-    show (Piece King White) = "♔"
 
-    show (Piece Pawn Black) = "♟"
-    show (Piece Knight Black) = "♞"
-    show (Piece Bishop Black) = "♝"
-    show (Piece Tower Black) = "♜"
-    show (Piece Queen Black) = "♛"
-    show (Piece King Black) = "♚"
-
-instance Show Board where
-   show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H\n"
-      where 
-         createGrid = unlines.addNumberCol.addFloor
-
-         addFloor :: [String] -> [String]
-         addFloor = intersperse (init (concat (replicate 8 "— ")) ++ "|")
-
-         addNumberCol :: [String] -> [String]
-         addNumberCol = map (\(a,b) -> a ++ "|" ++ b) . zip (intersperse " " $ map show $ reverse [1..8])
-
-         showRow [] = ""
-         showRow (Just p:row') = show p ++ "|" ++ showRow row'
-         showRow (Nothing:row') = " |" ++ showRow row'
 
 {--- Helper functions for operating on a board ---}
 -- Get square from Board

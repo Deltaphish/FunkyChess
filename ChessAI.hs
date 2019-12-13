@@ -4,6 +4,7 @@ import Data.List
 import Data.Maybe
 import Control.Parallel.Strategies
 
+import Types
 import Board
 
 -- Recursive Tree Datatype for collecting the moves generated for the ai
