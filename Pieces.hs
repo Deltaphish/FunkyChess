@@ -40,7 +40,7 @@ instance Show Piece
     show (Piece King Black) = "♚"
 
 instance Show Board where
-    show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H"
+    show (Board matrix) = "  A B C D E F G H\n" ++ createGrid (map showRow matrix)
        where 
           createGrid = unlines.addNumberCol.addFloor
  
@@ -48,7 +48,7 @@ instance Show Board where
           addFloor = intersperse (init (concat (replicate 8 "— ")) ++ "|")
  
           addNumberCol :: [String] -> [String]
-          addNumberCol = map (\(a,b) -> a ++ "|" ++ b).(zip (intersperse " " $ map show $ reverse [1..8]))
+          addNumberCol = map (\(a,b) -> a ++ "|" ++ b).(zip (intersperse " " $ map show [1..8]))
  
           showRow [] = ""
           showRow ((Just p):row') = show p ++ "|" ++ showRow row'

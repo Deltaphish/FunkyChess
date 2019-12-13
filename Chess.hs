@@ -117,8 +117,6 @@ checkMate = undefined
                     
 implementation = Interface
  { iInitBoard = initBoard
- , iMoves = moves
- , iOnBoard = onBoard
  , iPossibleDest = possibleDest
  , iMovePiece = movePiece
  , iCheckMate = checkMate

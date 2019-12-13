@@ -1,13 +1,14 @@
 module RunGame where
 import Data.Char
 import Data.Maybe
+import Data.List
 import System.Random
 import Pieces
 
+positions = "ABCDEFGH"
+
 data Interface = Interface
   { iInitBoard    :: Board
-  , iMoves        :: Piece -> [Direction]
-  , iOnBoard      :: Pos -> Bool
   , iPossibleDest :: Board -> Pos -> [Pos]
   , iMovePiece    :: Board -> Pos -> Pos -> Maybe Board
   , iCheckMate    :: Board -> Maybe Color
@@ -33,5 +34,5 @@ gameLoop i b = do
 
 strToPos :: String -> (Int,Int)
 strToPos s = (x,y)
-  where x = digitToInt (s !! 0)
-        y = digitToInt (s !! 1)        
+  where y = fromJust $ elemIndex (s !! 0) positions
+        x = digitToInt (s !! 1) - 1       
