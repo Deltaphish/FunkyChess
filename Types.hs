@@ -40,19 +40,19 @@ instance Show Rank
 
 instance Show Piece
    where
-    show (Piece Pawn White)   = "♙"
-    show (Piece Knight White) = "♘"
-    show (Piece Bishop White) = "♗"
-    show (Piece Tower White)  = "♖"
-    show (Piece Queen White)  = "♕"
-    show (Piece King White)   = "♔"
+    show (Piece Pawn Black)   = "♙"
+    show (Piece Knight Black) = "♘"
+    show (Piece Bishop Black) = "♗"
+    show (Piece Tower Black)  = "♖"
+    show (Piece Queen Black)  = "♕"
+    show (Piece King Black)   = "♔"
 
-    show (Piece Pawn Black)   = "♟"
-    show (Piece Knight Black) = "♞"
-    show (Piece Bishop Black) = "♝"
-    show (Piece Tower Black)  = "♜"
-    show (Piece Queen Black)  = "♛"
-    show (Piece King Black)   = "♚"
+    show (Piece Pawn White)   = "♟"
+    show (Piece Knight White) = "♞"
+    show (Piece Bishop White) = "♝"
+    show (Piece Tower White)  = "♜"
+    show (Piece Queen White)  = "♛"
+    show (Piece King White)   = "♚"
 
 instance Show Board where
    show (Board matrix) = createGrid (map showRow matrix) ++ "  A B C D E F G H\n"
