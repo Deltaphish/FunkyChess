@@ -18,11 +18,25 @@ data Rank =
 
 data Piece = Piece{ rank :: Rank
                   , color :: Color
-                  }
+                  } deriving Eq
 
 type Square = Maybe Piece
 
 newtype Board = Board [[Square]]
+
+instance Show Color
+   where
+    show White = "White"
+    show Black = "Black"
+
+instance Show Rank
+   where
+    show Pawn    = "Pawn"
+    show Knight  = "Knight"
+    show Bishop  = "Bishop"
+    show Tower   = "Tower"
+    show Queen   = "Queen"
+    show King    = "King"
 
 instance Show Piece
    where
@@ -41,16 +55,16 @@ instance Show Piece
     show (Piece King Black)   = "♚"
 
 instance Show Board where
-   show (Board matrix) =  createGrid (map showRow matrix) ++ "  A B C D E F G H\n"
+   show (Board matrix) = createGrid (map showRow matrix) ++ "  A B C D E F G H\n"
       where 
          createGrid = unlines.addNumberCol.addFloor
-
+ 
          addFloor :: [String] -> [String]
          addFloor = intersperse (init (concat (replicate 8 "— ")) ++ "|")
-
+ 
          addNumberCol :: [String] -> [String]
          addNumberCol = map (\(a,b) -> a ++ "|" ++ b) . zip (intersperse " " $ map show $ reverse [1..8])
-
+ 
          showRow [] = ""
-         showRow (Just p:row') = show p ++ "|" ++ showRow row'
-         showRow (Nothing:row') = " |" ++ showRow row'
+         showRow ((Just p):row') = show p ++ "|" ++ showRow row'
+         showRow ((Nothing):row') = " |" ++ showRow row'
