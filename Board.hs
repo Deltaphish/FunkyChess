@@ -133,3 +133,47 @@ movePiece :: Board -> Move -> Maybe Board
 movePiece board (start,dest)
    | dest `elem` possibleDest board False start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
    | otherwise                                  = error "Invalid Move"
+
+{-- Moving pieces --}
+
+data GameInfo = Default | Check Color | Checkmate Color
+
+opponent :: Color -> Color
+opponent White = Black
+opponent Black = White
+
+makeMove :: Board -> Color -> Move -> Maybe (Board,GameInfo)
+makeMove board c move = do
+    newBoard <- movePiece board move
+    checkState newBoard
+       where checkState board'
+                | isCheckmate board' c = return (board',Checkmate (opponent c))
+                | isCheck board' c     = return (board',Check (opponent c))
+                | otherwise            = return (board', Default)
+          
+
+movePiece :: Board -> Move -> Maybe Board
+movePiece board (start,dest)
+   | dest `elem` possibleDest board False start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
+   | otherwise                                  = error "Invalid Move"
+
+{-- Checks for gamestate --}
+
+isKing :: Board -> Pos -> Bool
+isKing board p = case board #!> p of
+                    Nothing -> False
+                    Just p -> rank p == King 
+
+kingPosition :: Board -> Color -> Maybe Pos
+kingPosition board c = listToMaybe $ filter (isKing board) $ getPiecePositions board c
+
+isCheck :: Board -> Color -> Bool
+isCheck board c = elem kingPos $ concatMap (possibleDest board False) $ getPiecePositions board c
+   where kingPos = fromJust $ kingPosition board (opponent c)
+
+isCheckmate :: Board -> Color -> Bool
+isCheckmate board c = isCheck board c && noEscape
+   where 
+      opponentMoves     = concatMap (possibleMoves board) $ getPiecePositions board (opponent c)
+      allPossibleBoards = map (fromJust.movePiece board) opponentMoves
+      noEscape          = and $ map ((flip isCheck) c) allPossibleBoards
