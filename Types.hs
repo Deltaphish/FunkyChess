@@ -8,6 +8,10 @@ type Move = (Pos,Pos)
 
 data Color = White | Black deriving Eq
 
+opponent :: Color -> Color
+opponent White = Black
+opponent Black = White
+
 data Rank =
     Pawn   |
     Tower  |

@@ -129,33 +129,28 @@ possibleDest board checkCoverage startPos
 possibleMoves :: Board -> Pos -> [Move]
 possibleMoves board p = zip (repeat p) (possibleDest board False p)
 
-movePiece :: Board -> Move -> Maybe Board
-movePiece board (start,dest)
-   | dest `elem` possibleDest board False start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
-   | otherwise                                  = error "Invalid Move"
-
 {-- Moving pieces --}
 
-data GameInfo = Default | Check Color | Checkmate Color
+data InputResult = InvalidMove | ValidMove Flag Board deriving Show
+data Flag = Non | Check Color | Checkmate Color deriving Show
 
-opponent :: Color -> Color
-opponent White = Black
-opponent Black = White
+makeMove :: Board -> Color -> Move -> InputResult
+makeMove board c (start,dest)
+   | isNothing maybePiece                                   = InvalidMove
+   | color (fromJust maybePiece) /= c                       = InvalidMove 
+   | (start,dest) `notElem` possibleMoves board start       = InvalidMove
+   | otherwise = let board' = movePiece board (start,dest) in ValidMove (getFlag board' c) board'
+   where maybePiece = board #!> start 
 
-makeMove :: Board -> Color -> Move -> Maybe (Board,GameInfo)
-makeMove board c move = do
-    newBoard <- movePiece board move
-    checkState newBoard
-       where checkState board'
-                | isCheckmate board' c = return (board',Checkmate (opponent c))
-                | isCheck board' c     = return (board',Check (opponent c))
-                | otherwise            = return (board', Default)
-          
+getFlag :: Board -> Color -> Flag
+getFlag board c | isCheck board c     = Check c
+                | isCheckmate board c = Checkmate c
+                | otherwise           = Non
 
-movePiece :: Board -> Move -> Maybe Board
+movePiece :: Board -> Move -> Board
 movePiece board (start,dest)
-   | dest `elem` possibleDest board False start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
-   | otherwise                                  = error "Invalid Move"
+   | dest `elem` possibleDest board False start = (board #=> (dest,board #!> start)) #=> (start,Nothing)
+   | otherwise                                  = error "movePiece: Invalid Move"
 
 {-- Checks for gamestate --}
 
@@ -175,5 +170,5 @@ isCheckmate :: Board -> Color -> Bool
 isCheckmate board c = isCheck board c && noEscape
    where 
       opponentMoves     = concatMap (possibleMoves board) $ getPiecePositions board (opponent c)
-      allPossibleBoards = map (fromJust.movePiece board) opponentMoves
+      allPossibleBoards = map (movePiece board) opponentMoves
       noEscape          = and $ map ((flip isCheck) c) allPossibleBoards
