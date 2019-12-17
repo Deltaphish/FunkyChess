@@ -31,7 +31,9 @@ handleInput :: Board -> Color -> [Pos] -> IO ()
 handleInput  b c pos
     | length pos == 1 = getPosDest b c (head pos)
     | length pos == 2 = handleMove b c (makeMove b c ((head pos), (pos !! 1)))
-    | otherwise       = putStrLn "Invalid input!\n"
+    | otherwise       = do
+        putStrLn "Invalid input!\n"
+        gameloop b c
 
 handleMove :: Board -> Color -> InputResult -> IO ()
 handleMove b c (InvalidMove)     = do 
