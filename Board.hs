@@ -5,6 +5,7 @@ module Board ( (#!>)
              , possibleDest
              , movePiece
              , getPiecePositions
+             , makeMove
              ) where
 
 import Data.List
@@ -130,9 +131,6 @@ possibleMoves :: Board -> Pos -> [Move]
 possibleMoves board p = zip (repeat p) (possibleDest board False p)
 
 {-- Moving pieces --}
-
-data InputResult = InvalidMove | ValidMove Flag Board deriving Show
-data Flag = Non | Check Color | Checkmate Color deriving Show
 
 makeMove :: Board -> Color -> Move -> InputResult
 makeMove board c (start,dest)
