@@ -78,8 +78,8 @@ bruteForce n board | or $ map (null) listOfMoves = error "AI error: No legal mov
 prop_validAiMove :: Board -> Property
 prop_validAiMove board = length (blacks) > 1 &&
                        length (whites) > 1 &&
-                       length (allMoves blacks) > 1 &&
-                       length (allMoves whites) > 1 ==> let m = bruteForce 2 board in onBoard (fst m) && onBoard (snd m)
+                       length (allMoves blacks) > 2 &&
+                       length (allMoves whites) > 2 ==> let m = bruteForce 2 board in checkMove onBoard m
                        where
                          blacks = getPiecePositions board Black
                          whites = getPiecePositions board White

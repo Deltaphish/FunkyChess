@@ -4,8 +4,14 @@ import Data.List
 import Test.QuickCheck
 
 type Pos = (Int,Int)
+
 type Direction = (Int,Int)
+
 type Move = (Pos,Pos)
+
+checkMove :: (Pos -> Bool) -> Move -> Bool
+checkMove f mov = f (fst mov) && f (snd mov)
+
 data InputResult = InvalidMove | ValidMove Flag Board deriving Show
 
 data Flag = Non | Check Color | Checkmate Color deriving (Show, Eq)
