@@ -24,31 +24,31 @@ main = do
 gameloop :: Board -> Color -> IO ()
 gameloop b c = do
     putStr "Please enter a command for player "
-    putStrLn $ show c
+    print c
     i <- getLine
     handleInput b c $ parseInput i
 
 handleInput :: Board -> Color -> [Pos] -> IO ()
 handleInput  b c pos
     | length pos == 1 = getPosDest b c (head pos)
-    | length pos == 2 = handleMove b c (makeMove b c ((head pos), (pos !! 1)))
+    | length pos == 2 = handleMove b c (makeMove b c (head pos, pos !! 1))
     | otherwise       = do
         putStrLn "Invalid input!\n"
         gameloop b c
 
 handleMove :: Board -> Color -> InputResult -> IO ()
-handleMove b c (InvalidMove)     = do 
+handleMove b c InvalidMove = do 
     putStrLn "Invalid input!\n"
     gameloop b c
 handleMove b c (ValidMove f b')
     | f == Check c     = do
         putStr "Check for "
-        putStrLn $ show c
+        print c
         print b'
         gameloop b' (opponent c)
     | f == Checkmate c = do
         putStr "Checkmate for "
-        putStrLn $ show c
+        print c
         print b'
         finish c
     | otherwise        = do
