@@ -6,12 +6,13 @@ module Board ( (#!>)
              , movePiece
              , getPiecePositions
              , makeMove
+             , prop_possibleDestOnBoard
              ) where
 
 import Data.List
 import Data.Maybe
 import Types
-
+import Test.QuickCheck
 
 onBoard :: Pos -> Bool
 onBoard (r,c) = r >= 0 && r <= 7 && c >= 0 && c <= 7
@@ -56,12 +57,8 @@ initBoard = Board $
                replicate 4 emptyRow          ++
                [pawnRow White,homeRow White]
 
-testCheckmate = initBoard #=> 
-                 ((6,5),Nothing) #=> 
-                  ((6,6),Nothing) #=> 
-                   ((7,6),Nothing) #=> 
-                    ((4,7),Just(Piece Queen Black))
-
+emptyBoard :: Board
+emptyBoard = Board $ replicate 8 emptyRow
 
 {--- Functions for generating legal possibleDirections ---}
 
@@ -100,7 +97,8 @@ possibleDest board checkCoverage startPos
 
       -- Special case for pawn since pawn can only go diagonal if it can take a piece and two steps if first step
       pawnWalk :: [Pos]
-      pawnWalk = canForward ++ canTwoStep ++ concatMap canDiagonal [-1,1]
+      pawnWalk | not $ onBoard (r+dr,c) = []  --- ToDo implement Pawn to Queen
+               | otherwise = canForward ++ canTwoStep ++ concatMap canDiagonal [-1,1]
          where
             (dr,_) = head $ possibleDirections p
             (r,c)  = startPos
@@ -140,6 +138,17 @@ possibleDest board checkCoverage startPos
 
 possibleMoves :: Board -> Pos -> [Move]
 possibleMoves board p = zip (repeat p) (possibleDest board False p)
+
+
+-- Make sure all destinations returned from possibleDest are on the board
+prop_possibleDestOnBoard :: Piece -> Bool
+prop_possibleDestOnBoard p = and $ map onBoard moves
+   where
+     positions = [(x,y) | x <- [0..7], y <- [0..7]]
+     boards   = map (\pos -> (pos,emptyBoard #=> (pos,Just p))) positions
+     moves   = concatMap (\(pos,board) -> possibleDest board False pos) boards
+
+
 
 {-- Moving pieces --}
 

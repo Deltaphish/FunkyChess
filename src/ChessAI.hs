@@ -39,7 +39,7 @@ getCoverValue board = length $ intersect destinations (getPiecePositions board a
 
 getPieceValue' :: Board -> Pos -> Int
 getPieceValue' board (row,col)  
-   | c == playerColor = 10 * (negate $ rankValue r)
+   | c == playerColor = 10 * (negate $ rankValue r)  -- Increases the value of enemy pieces by ten to make the ai more argressive
    | otherwise        =          rankValue r
       where Just (Piece r c) = board #!> (row,col)
 
