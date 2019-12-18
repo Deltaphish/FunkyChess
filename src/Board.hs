@@ -6,9 +6,6 @@ module Board ( (#!>)
              , movePiece
              , getPiecePositions
              , makeMove
-             , isCheck
-             , isCheckmate
-             , testCheckmate
              ) where
 
 import Data.List
@@ -148,20 +145,23 @@ possibleMoves board p = zip (repeat p) (possibleDest board False p)
 
 makeMove :: Board -> Color -> Move -> InputResult
 makeMove board c (start,dest)
-   | isNothing maybePiece                                   = InvalidMove
-   | color (fromJust maybePiece) /= c                       = InvalidMove 
-   | (start,dest) `notElem` possibleMoves board start       = InvalidMove
-   | getFlag board' c /= Non                                = InvalidMove
-   | otherwise = ValidMove (getFlag board' c) board'
+   | isNothing maybePiece                         = InvalidMove
+   | color (fromJust maybePiece) /= c               = InvalidMove 
+   | (start,dest) `notElem` possibleMoves board start  = InvalidMove
+   | isJust flagColor && fromJust flagColor /= c      = InvalidMove
+   | otherwise = ValidMove (getFlag board') board'
    where maybePiece = board #!> start 
          board' = movePiece board (start,dest)
+         flag = getFlag board'
+         flagColor = maybeFlagColor flag
 
-getFlag :: Board -> Color -> Flag
-getFlag board c | isCheckmate board c            = Checkmate c
-                | isCheckmate board (opponent c) = Checkmate (opponent c)
-                | isCheck board c                = Check c 
-                | isCheck board (opponent c)     = Check (opponent c)
-                | otherwise                      = Non
+getFlag :: Board -> Flag
+getFlag board 
+   | isCheckmate board White = Checkmate White
+   | isCheckmate board Black = Checkmate Black
+   | isCheck board White     = Check White 
+   | isCheck board Black     = Check Black
+   | otherwise              = Non
 
 movePiece :: Board -> Move -> Board
 movePiece board (start,dest)

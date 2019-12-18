@@ -99,7 +99,7 @@ createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n)
 -- Wrapper for external use
 makeAiMove :: Board -> [Pos]
 makeAiMove board = [(fst move), (snd move)]
-   where move = bruteForce 6 board
+   where move = bruteForce 4 board
 
 testAi :: (Board -> Board) -> Board -> Int -> IO()
 testAi engine board n = do

@@ -6,7 +6,14 @@ type Pos = (Int,Int)
 type Direction = (Int,Int)
 type Move = (Pos,Pos)
 data InputResult = InvalidMove | ValidMove Flag Board deriving Show
+
 data Flag = Non | Check Color | Checkmate Color deriving (Show, Eq)
+
+maybeFlagColor :: Flag -> Maybe Color
+maybeFlagColor Non          = Nothing
+maybeFlagColor (Check c)     = Just c
+maybeFlagColor (Checkmate c) = Just c
+
 
 data Color = White | Black deriving Eq
 
