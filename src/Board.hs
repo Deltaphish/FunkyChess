@@ -187,6 +187,6 @@ isCheckmate board c = isCheck board c && noEscape
    where 
       opponentMoves     = concatMap (possibleMoves board) $ getPiecePositions board (opponent c)
       allPossibleBoards = map (movePiece board) opponentMoves
-      noEscape          = and $ map ((flip isCheck) c) allPossibleBoards
+      noEscape          = all (`isCheck` c) allPossibleBoards
 
 
