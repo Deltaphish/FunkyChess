@@ -1,10 +1,8 @@
 name:                FunkyChess
 version:             0.1.0.0
-github:              "githubuser/FunkyChess"
-license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+github:              "https://github.com/Deltaphish/FunkyChess"
+author:              "Joakim Anderlind; Lukas Andersson"
+maintainer:          "joakimanderlind@gmail.com"
 
 extra-source-files:
 - README.md
@@ -22,7 +20,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - parallel >= 3.2
-- Win32 >= 2.6
+- QuickCheck >= 2.13
+# - Win32 >= 2.6
 
 library:
   source-dirs: src
@@ -38,7 +37,8 @@ executables:
     dependencies:
     - FunkyChess
     - parallel
-    - Win32
+#   - Win32 >= 2.6
+
   AI-exe:
     main:                Main.hs
     source-dirs:         AI
@@ -49,4 +49,4 @@ executables:
     dependencies:
     - FunkyChess
     - parallel
-    - Win32
+#  - win32 >= 2.6
