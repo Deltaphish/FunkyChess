@@ -118,10 +118,10 @@ possibleDest board checkCoverage startPos
             isOnHomeRow | color p == White = fst startPos == 6
                         | otherwise        = fst startPos == 1
             isValidTarget :: Pos -> Bool
-            isValidTarget targetPos | onBoard targetPos = case board #!> targetPos of
+            isValidTarget targetPos   | not $ onBoard targetPos = False 
+                                 | otherwise = case board #!> targetPos of
                                                                Nothing -> False
                                                                Just p' -> checkCoverage || color p /= color p'
-                                    | otherwise         = False
       
       walk :: Pos -> Direction -> Bool -> [Pos]
       walk (r,c) (dr,dc) multiStep
