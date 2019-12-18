@@ -151,8 +151,10 @@ makeMove board c (start,dest)
    | isNothing maybePiece                                   = InvalidMove
    | color (fromJust maybePiece) /= c                       = InvalidMove 
    | (start,dest) `notElem` possibleMoves board start       = InvalidMove
-   | otherwise = let board' = movePiece board (start,dest) in ValidMove (getFlag board' c) board'
+   | getFlag board' c /= Non                                = InvalidMove
+   | otherwise = ValidMove (getFlag board' c) board'
    where maybePiece = board #!> start 
+         board' = movePiece board (start,dest)
 
 getFlag :: Board -> Color -> Flag
 getFlag board c | isCheckmate board c            = Checkmate c

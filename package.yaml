@@ -22,6 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - parallel >= 3.2
+- Win32 >= 2.6
 
 library:
   source-dirs: src
@@ -29,7 +30,7 @@ library:
 executables:
   TwoPlayer-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         TwoPlayer
     ghc-options:
     - -threaded
     - -rtsopts
@@ -37,3 +38,15 @@ executables:
     dependencies:
     - FunkyChess
     - parallel
+    - Win32
+  AI-exe:
+    main:                Main.hs
+    source-dirs:         AI
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - FunkyChess
+    - parallel
+    - Win32

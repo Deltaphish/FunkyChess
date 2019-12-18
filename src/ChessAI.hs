@@ -97,29 +97,11 @@ createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n)
                              bestPlayerMove = snd $ minimumBy (\(s1,_) (s2,_) -> compare s1 s2) $ scoreMoves board playerMoves
 
 -- Wrapper for external use
-makeAiMove :: Board -> Board
-makeAiMove board = movePiece board (bruteForce 6 board)
+makeAiMove :: Board -> [Pos]
+makeAiMove board = [(fst move), (snd move)]
+   where move = bruteForce 6 board
 
 testAi :: (Board -> Board) -> Board -> Int -> IO()
 testAi engine board n = do
    let moveSequence = iterate engine board
    print (take n moveSequence)
-
---Test Main
-main = testAi (makeAiMove) initBoard 10
-
-{-
-    -- various test functions, delete later
-    vizDest :: Board -> Pos -> Board
-    vizDest board pos = foldr (\p b -> b #=> (p,Just(Piece Queen White))) board $ possibleDest board pos
-
-    testBoard = Board $ replicate 3 emptyRow ++
-                (replicate 3 Nothing ++ Just (Piece Queen Black) : replicate 4 Nothing) :
-                replicate 4 emptyRow
--}
-
--- Pure code ends here
-
-                    
-
-
