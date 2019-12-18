@@ -1,5 +1,6 @@
 {-- Remove comments if running on windows --}
 {-- Otherwise unicode errors will occur   --}
+module Main where
 
 import ChessAI
 import Board
@@ -15,17 +16,19 @@ chars = "ABCDEFGH"
 main = do 
     setLocaleEncoding utf8
     setConsoleOutputCP 65001
-    putStrLn "\nWelcome to FunkyChess \n-------------------- \nCommands:\n\nEnter the location of a piece to see all possible destinations, Example:B2 \nEnter the location of a piece and the destination with a space between to make a move, Example:B2 B3 \n\nPress Enter to start"
+    putStrLn "\nWelcome to FunkyChess AI\n-------------------- \nCommands:\n\nEnter the location of a piece to see all possible destinations, Example:B2 \nEnter the location of a piece and the destination with a space between to make a move, Example:B2 B3 \n\nPress Enter to start"
     getLine
     startGame White
 
 
 gameloop :: Board -> Color -> IO ()
-gameloop b c = do
-    putStr "Please enter a command for player "
-    putStrLn $ show c
+gameloop b White = do
+    putStrLn "Please enter a command for player"
     i <- getLine
-    handleInput b c $ parseInput i
+    handleInput b White $ parseInput i
+gameloop b Black = do
+    putStrLn "AI thinking of move... \n"
+    handleInput b Black (makeAiMove b)
 
 handleInput :: Board -> Color -> [Pos] -> IO ()
 handleInput  b c pos
