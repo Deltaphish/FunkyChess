@@ -43,6 +43,10 @@ type Square = Maybe Piece
 
 newtype Board = Board [[Square]]
 
+instance Arbitrary Board where
+   arbitrary = do matrix <- sequence $ replicate 8 row; return $ Board matrix
+      where row = vectorOf 8 $ frequency [(25, arbitrary),(75,return Nothing)]
+
 instance Show Color
    where
     show White = "White"

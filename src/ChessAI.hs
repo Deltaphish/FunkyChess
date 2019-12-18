@@ -1,8 +1,9 @@
-module ChessAI (makeAiMove,testAi) where
+module ChessAI (makeAiMove,testAi,prop_validAiMove) where
 
 import Data.List
 import Data.Maybe
 import Control.Parallel.Strategies
+import Test.QuickCheck
 
 import Types
 import Board
@@ -53,6 +54,7 @@ valueBoard board = pieceValueSum + coverageSum
 
 
 scoreMoveChain :: Board -> [Move] -> Int
+scoreMoveChain board [] = valueBoard board
 scoreMoveChain board moves' = valueBoard resBoard
    where resBoard = foldl (\b m -> movePiece b m) board moves'
 
@@ -62,13 +64,26 @@ scoreMoveChain board moves' = valueBoard resBoard
 -- decides a move by generating a tree of all possible moves to a level n, scoring and choosing the best one
 
 bruteForce :: Int -> Board -> Move
-bruteForce n board = fst $ maximumBy (\(_,s1) (_,s2) -> compare s1 s2) parCalc
+bruteForce n board | or $ map (null) listOfMoves = error "AI error: No legal move possible for AI"
+                 | otherwise = fst $ maximumBy (\(_,s1) (_,s2) -> compare s1 s2) parCalc
    where
       parCalc     = calcScore listOfMoves `using` parList rdeepseq
       calcScore   = map (\l -> ((head.head) l,score l))
       listOfMoves = map toMoveChains $ createMoveTree board n
       score :: [[Move]] -> Int
       score = maximum . map (scoreMoveChain board)
+
+
+-- Check that bruteforce does not crash for valid boards + all moves are on the board 
+prop_validAiMove :: Board -> Property
+prop_validAiMove board = length (blacks) > 1 &&
+                       length (whites) > 1 &&
+                       length (allMoves blacks) > 1 &&
+                       length (allMoves whites) > 1 ==> let m = bruteForce 2 board in onBoard (fst m) && onBoard (snd m)
+                       where
+                         blacks = getPiecePositions board Black
+                         whites = getPiecePositions board White
+                         allMoves = concatMap (possibleMoves board)
 
 scoreMoves :: Board -> [Move] -> [(Int,Move)]
 scoreMoves _ []         = []

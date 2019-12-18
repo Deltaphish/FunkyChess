@@ -6,7 +6,7 @@ import ChessAI
 import Board
 import Types
 import GHC.IO.Encoding
-import System.Win32.Console
+--import System.Win32.Console
 import Data.Maybe
 import Data.List
 
@@ -14,8 +14,8 @@ numbs = "87654321"
 chars = "ABCDEFGH"
 
 main = do 
-    setLocaleEncoding utf8
-    setConsoleOutputCP 65001
+  --  setLocaleEncoding utf8
+  --  setConsoleOutputCP 65001
     putStrLn "\nWelcome to FunkyChess TwoPlayer\n-------------------- \nCommands:\n\nEnter the location of a piece to see all possible destinations, Example:B2 \nEnter the location of a piece and the destination with a space between to make a move, Example:B2 B3 \n\nPress Enter to start"
     getLine
     startGame White

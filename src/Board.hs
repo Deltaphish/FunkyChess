@@ -1,5 +1,6 @@
 module Board ( (#!>)
              , (#=>)
+             , onBoard
              , initBoard
              , possibleMoves
              , possibleDest
