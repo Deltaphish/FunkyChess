@@ -54,7 +54,7 @@ valueBoard board = pieceValueSum + coverageSum
 
 scoreMoveChain :: Board -> [Move] -> Int
 scoreMoveChain board moves' = valueBoard resBoard
-   where resBoard = foldl (\b m -> fromJust $ movePiece b m) board moves'
+   where resBoard = foldl (\b m -> movePiece b m) board moves'
 
 {--- Functions for generating/evaluating moveTrees ---}
 
@@ -72,10 +72,7 @@ bruteForce n board = fst $ maximumBy (\(_,s1) (_,s2) -> compare s1 s2) parCalc
 
 scoreMoves :: Board -> [Move] -> [(Int,Move)]
 scoreMoves _ []         = []
-scoreMoves board (m:ms) = case movePiece board m of
-                             Just board' -> (valueBoard board',m) : scoreMoves board ms
-                             Nothing     -> error ("scoreMoves: illeagal move " ++ show m)
-
+scoreMoves board (m:ms) = (valueBoard (movePiece board m),m) : scoreMoves board ms
 
 {-
    Evaluate the ai's next move by creating a trees of all possible move-chains from the board.
@@ -87,8 +84,7 @@ scoreMoves board (m:ms) = case movePiece board m of
 evalMoveTree :: Board -> Move -> Int -> [MoveTree]
 evalMoveTree board move n = createMoveTree newBoard (n-1)
    where
-      newBoard = fromMaybe (error ("newBoard: illeagal move " ++ show move)) 
-                    (movePiece board move)
+      newBoard = movePiece board move
 
 -- Create a List of Nodes from all availibe moves
 -- N specifies depth
@@ -102,8 +98,7 @@ createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n)
 
 -- Wrapper for external use
 makeAiMove :: Board -> Board
-makeAiMove board = fromMaybe (error "makeAiMove: invalid move") 
-                      (movePiece board (bruteForce 6 board))
+makeAiMove board = movePiece board (bruteForce 6 board)
 
 testAi :: (Board -> Board) -> Board -> Int -> IO()
 testAi engine board n = do

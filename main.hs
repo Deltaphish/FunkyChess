@@ -11,7 +11,6 @@ import Data.List
 
 numbs = "87654321"
 chars = "ABCDEFGH"
-sides = [White, Black]
 
 main = do 
     setLocaleEncoding utf8
@@ -24,55 +23,48 @@ main = do
 gameloop :: Board -> Color -> IO ()
 gameloop b c = do
     putStr "Please enter a command for player "
-    print $ show c
-    putStrLn ""
+    putStrLn $ show c
     i <- getLine
-    let pos = parseInput i
-    if pos /= [] then
-        if length pos == 1 then
-            if ownPiece b (head pos) c then
-                putStrLn $ unlines $ "" : map moveDestStr (possibleMoves b (head pos)) 
-            else 
-                putStrLn "Invalid input!\n"
-        else 
-            if correctMove b (head pos) (pos !! 1)&& ownPiece b (head pos) c then
-                if c == White then do
-                    putStr ""
-                    handleInput b White pos
-                else do
-                    putStr ""
-                    handleInput b Black pos
-            else 
-                putStrLn "Invalid input!\n"
-    else 
-        putStrLn "Invalid input!\n"
-    gameloop b c
-        where
-            handleInput :: Board -> Color -> [Pos] -> IO ()
-            handleInput b c pos =
-                if (pos !! 1) `elem` getPiecePositions b (head (sides \\ [c])) then
-                    if Piece King (head (sides \\ [c])) == fromJust (b #!> (pos !! 1)) then
-                        finish c
-                    else do
-                        print $ show c
-                        putStr " Took a "
-                        print $ rank $ fromJust (b #!> (pos !! 1))
-                        makeMove b c pos
-                else
-                    makeMove b c pos
-                where
-                    makeMove :: Board -> Color -> [Pos] -> IO ()
-                    makeMove b c pos = do
-                        let newb = fromJust $ movePiece b (head pos, pos !! 1)
-                        print newb
-                        gameloop newb (head (sides \\ [c]))
+    handleInput b c $ parseInput i
 
+handleInput :: Board -> Color -> [Pos] -> IO ()
+handleInput  b c pos
+    | length pos == 1 = getPosDest b c (head pos)
+    | length pos == 2 = handleMove b c (makeMove b c ((head pos), (pos !! 1)))
+    | otherwise       = do
+        putStrLn "Invalid input!\n"
+        gameloop b c
+
+handleMove :: Board -> Color -> InputResult -> IO ()
+handleMove b c (InvalidMove)     = do 
+    putStrLn "Invalid input!\n"
+    gameloop b c
+handleMove b c (ValidMove f b')
+    | f == Check c     = do
+        putStr "Check for "
+        putStrLn $ show c
+        print b'
+        gameloop b' (opponent c)
+    | f == Checkmate c = do
+        putStr "Checkmate for "
+        putStrLn $ show c
+        print b'
+        finish c
+    | otherwise        = do
+        print b'
+        gameloop b' (opponent c)
+
+getPosDest :: Board -> Color -> Pos -> IO ()
+getPosDest b c p
+    | ownPiece b p c   = do 
+        putStrLn $ unlines $ "" : map moveDestStr (possibleMoves b p) 
+        gameloop b c
+    | otherwise        = do 
+        putStrLn "Invalid input!\n"
+        gameloop b c
 
 ownPiece :: Board -> Pos -> Color -> Bool
 ownPiece b p c = p `elem` getPiecePositions b c
-
-correctMove :: Board -> Pos -> Pos -> Bool
-correctMove b p d = (p, d) `elem` possibleMoves b p
 
 parseInput :: String -> [Pos]
 parseInput i

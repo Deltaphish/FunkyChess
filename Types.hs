@@ -5,8 +5,14 @@ import Data.List
 type Pos = (Int,Int)
 type Direction = (Int,Int)
 type Move = (Pos,Pos)
+data InputResult = InvalidMove | ValidMove Flag Board deriving Show
+data Flag = Non | Check Color | Checkmate Color deriving (Show, Eq)
 
 data Color = White | Black deriving Eq
+
+opponent :: Color -> Color
+opponent White = Black
+opponent Black = White
 
 data Rank =
     Pawn   |

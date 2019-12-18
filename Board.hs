@@ -5,6 +5,10 @@ module Board ( (#!>)
              , possibleDest
              , movePiece
              , getPiecePositions
+             , makeMove
+             , isCheck
+             , isCheckmate
+             , testCheckmate
              ) where
 
 import Data.List
@@ -55,6 +59,12 @@ initBoard = Board $
                replicate 4 emptyRow          ++
                [pawnRow White,homeRow White]
 
+testCheckmate = initBoard #=> 
+                 ((6,5),Nothing) #=> 
+                  ((6,6),Nothing) #=> 
+                   ((7,6),Nothing) #=> 
+                    ((4,7),Just(Piece Queen Black))
+
 
 {--- Functions for generating legal possibleDirections ---}
 
@@ -98,14 +108,16 @@ possibleDest board checkCoverage startPos
             (dr,_) = head $ possibleDirections p
             (r,c)  = startPos
             canTwoStep :: [Pos]
-            canTwoStep | isOnHomeRow = walk startPos (dr*2,0) False
+            canTwoStep | isOnHomeRow && isNothing (collision (r+dr*2,c)) = walk startPos (dr*2,0) False
                        | otherwise   = []
             canDiagonal :: Int -> [Pos]
             canDiagonal c' | isValidTarget (r',c'+c) = walk startPos (dr,c') False
                            | otherwise               = []
                               where r' = r+dr
             canForward  :: [Pos]
-            canForward = walk startPos (dr,0) False
+            canForward | isNothing $ collision (r+dr,c) = walk startPos (dr,0) False
+                       | otherwise                      = []
+
             isOnHomeRow :: Bool
             isOnHomeRow | color p == White = fst startPos == 6
                         | otherwise        = fst startPos == 1
@@ -125,11 +137,54 @@ possibleDest board checkCoverage startPos
                                         else [newPos]
             where newPos = (r+dr,c+dc)
 
+      collision :: Pos -> Maybe Color
+      collision pos = color <$> board #!> pos
+
 
 possibleMoves :: Board -> Pos -> [Move]
 possibleMoves board p = zip (repeat p) (possibleDest board False p)
 
-movePiece :: Board -> Move -> Maybe Board
+{-- Moving pieces --}
+
+makeMove :: Board -> Color -> Move -> InputResult
+makeMove board c (start,dest)
+   | isNothing maybePiece                                   = InvalidMove
+   | color (fromJust maybePiece) /= c                       = InvalidMove 
+   | (start,dest) `notElem` possibleMoves board start       = InvalidMove
+   | otherwise = let board' = movePiece board (start,dest) in ValidMove (getFlag board' c) board'
+   where maybePiece = board #!> start 
+
+getFlag :: Board -> Color -> Flag
+getFlag board c | isCheckmate board c            = Checkmate c
+                | isCheckmate board (opponent c) = Checkmate (opponent c)
+                | isCheck board c                = Check c 
+                | isCheck board (opponent c)     = Check (opponent c)
+                | otherwise                      = Non
+
+movePiece :: Board -> Move -> Board
 movePiece board (start,dest)
-   | dest `elem` possibleDest board False start = Just $ (board #=> (dest,board #!> start)) #=> (start,Nothing)
-   | otherwise                                  = error "Invalid Move"
+   | dest `elem` possibleDest board False start = (board #=> (dest,board #!> start)) #=> (start,Nothing)
+   | otherwise                                  = error "movePiece: Invalid Move"
+
+{-- Checks for gamestate --}
+
+isKing :: Board -> Pos -> Bool
+isKing board p = case board #!> p of
+                    Nothing -> False
+                    Just p -> rank p == King 
+
+kingPosition :: Board -> Color -> Maybe Pos
+kingPosition board c = listToMaybe $ filter (isKing board) $ getPiecePositions board c
+
+isCheck :: Board -> Color -> Bool
+isCheck board c = elem kingPos $ concatMap (possibleDest board False) $ getPiecePositions board c
+   where kingPos = fromJust $ kingPosition board (opponent c)
+
+isCheckmate :: Board -> Color -> Bool
+isCheckmate board c = isCheck board c && noEscape
+   where 
+      opponentMoves     = concatMap (possibleMoves board) $ getPiecePositions board (opponent c)
+      allPossibleBoards = map (movePiece board) opponentMoves
+      noEscape          = and $ map ((flip isCheck) c) allPossibleBoards
+
+
