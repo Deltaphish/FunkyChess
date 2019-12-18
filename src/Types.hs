@@ -1,6 +1,7 @@
 module Types where
 
 import Data.List
+import Test.QuickCheck
 
 type Pos = (Int,Int)
 type Direction = (Int,Int)
@@ -32,6 +33,11 @@ data Rank =
 data Piece = Piece{ rank :: Rank
                   , color :: Color
                   } deriving Eq
+
+instance Arbitrary Piece where
+   arbitrary = do r' <- r; c' <- c; return $ Piece r' c'
+      where c = elements [White,Black]
+            r = elements [Pawn,Tower,Knight,Bishop,Queen,King]
 
 type Square = Maybe Piece
 
