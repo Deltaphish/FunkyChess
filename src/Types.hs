@@ -90,4 +90,4 @@ instance Show Board where
  
          showRow [] = ""
          showRow ((Just p):row') = show p ++ "|" ++ showRow row'
-         showRow ((Nothing):row') = " |" ++ showRow row'
+         showRow (Nothing:row') = " |" ++ showRow row'

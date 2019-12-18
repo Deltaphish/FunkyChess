@@ -40,7 +40,7 @@ getCoverValue board = length $ intersect destinations (getPiecePositions board a
 
 getPieceValue' :: Board -> Pos -> Int
 getPieceValue' board (row,col)  
-   | c == playerColor = 10 * (negate $ rankValue r)  -- Increases the value of enemy pieces by ten to make the ai more argressive
+   | c == playerColor = 10 * negate (rankValue r)
    | otherwise        =          rankValue r
       where Just (Piece r c) = board #!> (row,col)
 
@@ -113,7 +113,7 @@ createMoveTree board n | n `mod` 2 == 0 = [Node move (evalMoveTree board move n)
 
 -- Wrapper for external use
 makeAiMove :: Board -> [Pos]
-makeAiMove board = [(fst move), (snd move)]
+makeAiMove board = [fst move, snd move]
    where move = bruteForce 4 board
 
 testAi :: (Board -> Board) -> Board -> Int -> IO()
