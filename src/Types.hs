@@ -2,6 +2,7 @@ module Types where
 
 import Data.List
 import Test.QuickCheck
+import Control.DeepSeq
 
 type Pos = (Int,Int)
 
@@ -52,6 +53,8 @@ newtype Board = Board [[Square]]
 instance Arbitrary Board where
    arbitrary = do matrix <- sequence $ replicate 8 row; return $ Board matrix
       where row = vectorOf 8 $ frequency [(25, arbitrary),(75,return Nothing)]
+instance NFData Board where
+  rnf _ = ()
 
 instance Show Color
    where

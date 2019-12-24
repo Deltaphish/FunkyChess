@@ -19,7 +19,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- parallel >= 3.2
+- monad-par >= 0.3.5
+- deepseq >= 1.4
 - QuickCheck >= 2.13
 # - Win32 >= 2.6
 
@@ -36,7 +37,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - FunkyChess
-    - parallel
+    - monad-par
 #   - Win32 >= 2.6
 
   AI-exe:
@@ -48,5 +49,5 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - FunkyChess
-    - parallel
+    - monad-par
 #  - win32 >= 2.6
