@@ -8,6 +8,8 @@ module Board ( (#!>)
              , getPiecePositions
              , makeMove
              , prop_possibleDestOnBoard
+             , allPossibleMoves
+             , isCheck
              ) where
 
 import Data.List
@@ -140,6 +142,8 @@ possibleDest board checkCoverage startPos
 possibleMoves :: Board -> Pos -> [Move]
 possibleMoves board p = zip (repeat p) (possibleDest board False p)
 
+--allPossibleMoves :: Board -> Color -> [Move]
+allPossibleMoves board c = concatMap (possibleMoves board) $ getPiecePositions board c
 
 -- Make sure all destinations returned from possibleDest are on the board
 prop_possibleDestOnBoard :: Piece -> Bool
@@ -189,8 +193,9 @@ kingPosition :: Board -> Color -> Maybe Pos
 kingPosition board c = listToMaybe $ filter (isKing board) $ getPiecePositions board c
 
 isCheck :: Board -> Color -> Bool
-isCheck board c = elem kingPos $ concatMap (possibleDest board False) $ getPiecePositions board c
-   where kingPos = fromJust $ kingPosition board (opponent c)
+isCheck board c = case kingPosition board (opponent c) of 
+                     Just kingPos -> elem kingPos $ concatMap (possibleDest board False) $ getPiecePositions board c
+                     _ -> True
 
 isCheckmate :: Board -> Color -> Bool
 isCheckmate board c = isCheck board c && noEscape
